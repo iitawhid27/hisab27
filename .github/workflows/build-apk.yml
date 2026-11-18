@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-apk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
@@ -24,7 +24,7 @@ jobs:
           java-version: '17'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Install dependencies
         run: |
@@ -70,7 +70,7 @@ jobs:
           cp android/app/build/outputs/apk/debug/app-debug.apk apk-output/khata.apk
 
       - name: Upload Khata APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: khata-apk
           path: apk-output/khata.apk
