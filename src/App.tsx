@@ -84,6 +84,15 @@ const CKEY = 'customers';
 const BKEY = 'bin';
 const USER_KEY = 'khata_user_email';
 
+const getScopedKeys = (email: string) => {
+  const clean = sanitizeEmail(email);
+  return {
+    k: clean ? `ledger_${clean}` : KEY,
+    ck: clean ? `customers_${clean}` : CKEY,
+    bk: clean ? `bin_${clean}` : BKEY,
+  };
+};
+
 const bn = (n: number) => Number(n || 0).toLocaleString('bn-BD', { maximumFractionDigits: 2 });
 const money = (n: number) => '৳ ' + bn(n);
 const esc = (s: string) => String(s || '');
@@ -145,15 +154,33 @@ export default function App() {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState<boolean>(false);
 
-  // App data state
+  // App data state (scoped to userEmail)
   const [tx, setTx] = useState<Transaction[]>(() => {
-    try { return JSON.parse(safeStorage.getItem(KEY) || '[]'); } catch { return []; }
+    try {
+      const email = safeStorage.getItem(USER_KEY) || '';
+      const keys = getScopedKeys(email);
+      return JSON.parse(safeStorage.getItem(keys.k) || '[]');
+    } catch {
+      return [];
+    }
   });
   const [cust, setCust] = useState<string[]>(() => {
-    try { return JSON.parse(safeStorage.getItem(CKEY) || '[]'); } catch { return []; }
+    try {
+      const email = safeStorage.getItem(USER_KEY) || '';
+      const keys = getScopedKeys(email);
+      return JSON.parse(safeStorage.getItem(keys.ck) || '[]');
+    } catch {
+      return [];
+    }
   });
   const [bin, setBin] = useState<BinItem[]>(() => {
-    try { return JSON.parse(safeStorage.getItem(BKEY) || '[]'); } catch { return []; }
+    try {
+      const email = safeStorage.getItem(USER_KEY) || '';
+      const keys = getScopedKeys(email);
+      return JSON.parse(safeStorage.getItem(keys.bk) || '[]');
+    } catch {
+      return [];
+    }
   });
 
   // UI state
@@ -207,16 +234,41 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // When userEmail changes, load user-specific stored data or reset
+  useEffect(() => {
+    if (!userEmail) {
+      setTx([]);
+      setCust([]);
+      setBin([]);
+      return;
+    }
+    const keys = getScopedKeys(userEmail);
+    try {
+      const localTx = JSON.parse(safeStorage.getItem(keys.k) || '[]');
+      const localCust = JSON.parse(safeStorage.getItem(keys.ck) || '[]');
+      const localBin = JSON.parse(safeStorage.getItem(keys.bk) || '[]');
+      setTx(localTx);
+      setCust(localCust);
+      setBin(localBin);
+    } catch {
+      setTx([]);
+      setCust([]);
+      setBin([]);
+    }
+  }, [userEmail]);
+
   // Sync data locally, over WebSocket, and to Firebase Firestore
   const syncData = async (newTx: Transaction[], newCust: string[], newBin: BinItem[]) => {
     setTx(newTx);
     setCust(newCust);
     setBin(newBin);
-    safeStorage.setItem(KEY, JSON.stringify(newTx));
-    safeStorage.setItem(CKEY, JSON.stringify(newCust));
-    safeStorage.setItem(BKEY, JSON.stringify(newBin));
 
     if (userEmail) {
+      const keys = getScopedKeys(userEmail);
+      safeStorage.setItem(keys.k, JSON.stringify(newTx));
+      safeStorage.setItem(keys.ck, JSON.stringify(newCust));
+      safeStorage.setItem(keys.bk, JSON.stringify(newBin));
+
       const cleanEmail = sanitizeEmail(userEmail);
       const payloadData = {
         transactions: newTx,
@@ -288,10 +340,19 @@ export default function App() {
             setCust(serverCust);
             setBin(serverBin);
 
-            safeStorage.setItem(KEY, JSON.stringify(serverTx));
-            safeStorage.setItem(CKEY, JSON.stringify(serverCust));
-            safeStorage.setItem(BKEY, JSON.stringify(serverBin));
+            const keys = getScopedKeys(userEmail);
+            safeStorage.setItem(keys.k, JSON.stringify(serverTx));
+            safeStorage.setItem(keys.ck, JSON.stringify(serverCust));
+            safeStorage.setItem(keys.bk, JSON.stringify(serverBin));
           }
+        } else {
+          setTx([]);
+          setCust([]);
+          setBin([]);
+          const keys = getScopedKeys(userEmail);
+          safeStorage.setItem(keys.k, JSON.stringify([]));
+          safeStorage.setItem(keys.ck, JSON.stringify([]));
+          safeStorage.setItem(keys.bk, JSON.stringify([]));
         }
       },
       (error) => {
@@ -314,14 +375,17 @@ export default function App() {
           const serverTx = Array.isArray(data.transactions) ? data.transactions : [];
           const serverCust = Array.isArray(data.customers) ? data.customers : [];
           const serverBin = Array.isArray(data.bin) ? data.bin : [];
-          if (serverTx.length || serverCust.length || serverBin.length) {
-            setTx(serverTx);
-            setCust(serverCust);
-            setBin(serverBin);
-            safeStorage.setItem(KEY, JSON.stringify(serverTx));
-            safeStorage.setItem(CKEY, JSON.stringify(serverCust));
-            safeStorage.setItem(BKEY, JSON.stringify(serverBin));
-          }
+          setTx(serverTx);
+          setCust(serverCust);
+          setBin(serverBin);
+          const keys = getScopedKeys(userEmail);
+          safeStorage.setItem(keys.k, JSON.stringify(serverTx));
+          safeStorage.setItem(keys.ck, JSON.stringify(serverCust));
+          safeStorage.setItem(keys.bk, JSON.stringify(serverBin));
+        } else {
+          setTx([]);
+          setCust([]);
+          setBin([]);
         }
       })
       .catch(() => {});
@@ -348,9 +412,10 @@ export default function App() {
             setTx(transactions);
             setCust(customers);
             setBin(serverBin);
-            safeStorage.setItem(KEY, JSON.stringify(transactions));
-            safeStorage.setItem(CKEY, JSON.stringify(customers));
-            safeStorage.setItem(BKEY, JSON.stringify(serverBin));
+            const keys = getScopedKeys(userEmail);
+            safeStorage.setItem(keys.k, JSON.stringify(transactions));
+            safeStorage.setItem(keys.ck, JSON.stringify(customers));
+            safeStorage.setItem(keys.bk, JSON.stringify(serverBin));
           }
         } catch (e) {
           console.error('WS parse error:', e);
@@ -414,6 +479,9 @@ export default function App() {
       safeStorage.removeItem(USER_KEY);
       setUserEmail('');
       setLoginEmailInput('');
+      setTx([]);
+      setCust([]);
+      setBin([]);
       showToast('লগআউট করা হয়েছে');
     }
   };
