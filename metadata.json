@@ -1,0 +1,6 @@
+{
+  "name": "খাতা - ডিজিটাল লেজার ও লাইভ সিঙ্ক",
+  "description": "অনলাইন ডিজিটাল হিসাব খাতা, জিমেইল লগইন এবং রিয়েল-টাইম লাইভ সিঙ্ক ফিচারসহ।",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

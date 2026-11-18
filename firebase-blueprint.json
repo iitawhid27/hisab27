@@ -1,0 +1,35 @@
+{
+  "entities": {
+    "UserLedger": {
+      "title": "UserLedger",
+      "description": "User ledger document holding transactions, customers list and bin items.",
+      "type": "object",
+      "properties": {
+        "transactions": {
+          "type": "array",
+          "description": "List of ledger transactions"
+        },
+        "customers": {
+          "type": "array",
+          "description": "List of customer names"
+        },
+        "bin": {
+          "type": "array",
+          "description": "List of recycle bin items"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Last update timestamp"
+        }
+      }
+    }
+  },
+  "firestore": {
+    "/ledgers/{userEmail}": {
+      "schema": {
+        "$ref": "#/entities/UserLedger"
+      },
+      "description": "Document holding all ledger data for a specific user Gmail address."
+    }
+  }
+}

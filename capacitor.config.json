@@ -1,0 +1,15 @@
+{
+  "appId": "com.khata.app",
+  "appName": "খাতা",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "allowNavigation": [
+      "*.firebaseapp.com",
+      "*.googleapis.com",
+      "accounts.google.com",
+      "*.google.com",
+      "ais-pre-bqgulzlt5muonfx2j46szg-564174579344.asia-east1.run.app"
+    ]
+  }
+}
